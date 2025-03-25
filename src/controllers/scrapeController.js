@@ -1,4 +1,3 @@
-// src/controllers/scrapeController.js
 import axios from "axios";
 import { JSDOM } from "jsdom";
 
@@ -13,6 +12,7 @@ export const scrapeProducts = async (req, res) => {
 
   try {
     const url = `https://www.amazon.com/s?k=${encodeURIComponent(keyword)}`;
+
     const response = await axios.get(url, {
       headers: {
         "User-Agent":
@@ -23,6 +23,7 @@ export const scrapeProducts = async (req, res) => {
       },
     });
     const html = response.data;
+
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
@@ -34,7 +35,21 @@ export const scrapeProducts = async (req, res) => {
       const title = item.querySelector("h2 span")?.textContent || null;
       const ratingText =
         item.querySelector(".a-icon-alt")?.textContent || "No rating";
-      const rating = ratingText.match(/(\d+\.\d+)/)?.[0] || "No rating";
+      const rating = ratingText.match(/(\d+\.\d+)/)?.[0] || "No rating"; // Extração de apenas a nota numérica
+
+      // Calcular as estrelas com base na avaliação (rating)
+      const ratingValue = parseFloat(rating) || 0;
+      const totalStars = 5;
+      let filledStars = Math.floor(ratingValue); // Estrelas completamente preenchidas
+      let halfStar = ratingValue % 1 >= 0.5 ? 1 : 0; // Verificar se a estrela parcial deve ser exibida
+      let emptyStars = totalStars - filledStars - halfStar; // Estrelas vazias
+
+      // Gerar a representação visual das estrelas
+      const stars = [
+        ...Array(filledStars).fill("★"), // Estrelas cheias
+        ...Array(halfStar).fill("⯪"), // Estrela meio preenchida
+        ...Array(emptyStars).fill("☆"), // Estrelas vazias
+      ];
 
       const reviewsText =
         item.querySelector(".a-size-base")?.textContent || "No reviews";
@@ -50,11 +65,17 @@ export const scrapeProducts = async (req, res) => {
 
       return {
         title,
-        rating: `${rating} out of 5 stars`, // Exibindo rating como texto
-        reviews: `${reviews} reviews`, // Exibindo reviews como número
+        rating: `${stars.join(" ")} ${rating}`, // Colocando as estrelas e a nota ao lado
+        reviews: `${reviews} reviews`,
         imageUrl,
       };
     });
+
+    if (products.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No products found for the given keyword" });
+    }
 
     res.json(products.filter((item) => item !== null));
   } catch (error) {
