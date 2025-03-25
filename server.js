@@ -1,13 +1,15 @@
 import express from "express";
-import axios from "axios";
-import { JSDOM } from "jsdom";
 import cors from "cors";
+import scrapeRoute from "./src/routes/scrapeRoute";
 
 const app = express();
 const port = 3000;
 
 // CORS para todas as origens
 app.use(cors());
+
+// Rota de scraping
+app.use("/api", scrapeRoute);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
